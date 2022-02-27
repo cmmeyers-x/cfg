@@ -1,7 +1,36 @@
 import sys
+from collections import deque
 
-# parse the cfg passed in, trims newlines and empty spaces to make processing easier
-def parse_file(file_name):
+
+# A class representing a Context Free Grammar
+# Assume all fields in Constructor are present. You should just have to interface with this
+class CFG:
+    def __init__(self, cfg: dict, rules: list, terminals: set, start_symbol: str):
+        self.cfg = cfg  # A dictionary with key : non-terminal, value : list of production results
+        self.rules = rules  # a list of tuple (non-terminal, production result)
+        self.terminals = terminals  # non_terminals are just keys in cfg
+        self.start_symbol = start_symbol
+
+    def derives_to_lambda(self, L: str, T: deque) -> bool:
+        if L == "S": return False
+        if L == "A": return False
+        if L == "B": return True
+        if L == "C": return False
+
+    def first_set(self, Xb: list, T: set = None) -> (set(), set()):
+        if Xb[0] == "S": return set("a"), None
+        if Xb[0] == "A": return set("a"), None
+        if Xb[0] == "B": return set("b", "c", "q", "a"), None
+        if Xb[0] == "C": return set("c", "q"), None
+
+
+    def follow_set(self, A: str, T: set=None) -> (set(), set()):
+        pass
+
+
+# file_name : a file in the cwd of the script
+# returns : a list of lines with newlines extra spaces removed
+def parse_file(file_name: str) -> list:
     result_list = []
     # open file and put it in an array of lines
     with open(file_name) as f:
@@ -9,78 +38,85 @@ def parse_file(file_name):
         for i, line in enumerate(lines):
             items = line.split(' ')
             items[-1] = items[-1].replace("\n", "")  # remove newline if exists
-            for i in range (len(items)-1, -1, -1):  # trim empty spaces
+            for i in range(len(items) - 1, -1, -1):  # trim empty spaces
                 if items[i] == '':
                     items.pop(i)
             result_list.append(' '.join(items))
 
     return result_list
 
-def main(file):
-    lines = parse_file(file)
-    cfg = {} # dictionary key : non-terminal, value : list of productions
-    nonTerminal = ""
-    # parse
+
+# lines : a list of lines that describe production rules
+# returns : a CFG object
+def generate_cfg(lines: list) -> dict:
+    cfg = {}
+    non_terminal = ""
     for line in lines:
-        if '->' in line: # production
+        # production grab the non-terminal and add rules for it
+        if '->' in line:
             split = line.index('->')
-            lhs = line[:split].strip()
+            non_terminal = line[:split].strip()
             rhs = line[2 + split:].strip()
-            while '|' in rhs:
-                pipe = rhs.find("|")
-                rhs1 = rhs[:pipe].strip()
-                rhs2 = rhs[1+pipe:].strip()
-                if lhs in cfg:
-                    cfg[lhs].append(rhs1)
+            rules = rhs.split('|')
+            for rule in rules:
+                if non_terminal in cfg:
+                    cfg[non_terminal].append(rule.strip())
                 else:
-                    cfg[lhs] = [rhs1]
-                rhs = rhs2
-            else:
-                if lhs in cfg:
-                    cfg[lhs].append(rhs)
-                else:
-                    cfg[lhs] = [rhs]
-            nonTerminal = lhs
-        elif nonTerminal != "":  # | on its own line
+                    cfg[non_terminal] = [rule.strip()]
+        elif non_terminal != "":  # | on its own line with a previously specified non-terminal
             if "|" in line:
                 rules = line.split('|')
                 for rule in rules:
                     if rule != "":
-                        cfg[nonTerminal].append(rule.strip())
+                        cfg[non_terminal].append(rule.strip())
 
-    # rules as read
-    i = 0
+    return cfg
+
+
+def main(file):
+    lines = parse_file(file)
+    cfg = generate_cfg(lines)
+
+    # Print all rules
+    rules = []  # tuple of NonTerminal -> Result
+    print("Rules:")
+    rule_num = 0
     for key, val in cfg.items():
         for result in val:
-            print(i, key, "->", result)
-            i = i + 1
-    i = i + 1
+            rules.append((key, result))
+            print(rule_num, "\t", key, "->", result)
+            rule_num += 1
 
-    # start symbol
+    # Print start symbol
+    start_symbol = ""
     for key, val in cfg.items():
         for result in val:
             if "$" in result:
                 print("Start symbol:", key)
+                start_symbol = key
+                break
 
-    # non terminals:
-    nonTerminal = {}
+    # Print non-terminals:
+    print("\nNon Terminals:")
     for key in cfg.keys():
-        nonTerminal[key] = -1
-    print("\nNon Terminals")
-    for key in nonTerminal.keys():
-        print(key)
+        print(key, end=" ")
+    print("")
 
-    # terminals
-    terminals = {}
-    for key, values in cfg.items():
-        for v in values:
+    # Print terminals
+    terminals = set()
+    for key, val in cfg.items():
+        for v in val:
             for value in v.split(' '):
-                if value not in nonTerminal:
-                    terminals[value] = -1
+                if value not in cfg:  # if not a non terminal
+                    terminals.add(value)
 
     print("\nTerminals")
-    for term in terminals.keys():
-        print(term)
+    for term in terminals:
+        print(term, end=" ")
+    print("")
+
+    grammer = CFG(cfg, rules, terminals, start_symbol)
+
 
 if __name__ == '__main__':
     if (len(sys.argv) != 2):
