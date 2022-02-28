@@ -17,7 +17,7 @@ class CFG:
         if L == "B": return True
         if L == "C": return False
 
-    def first_set(self, Xb: list, T: set = None) -> (set(), set()):
+    def first_set(self, Xb: list, T: set = None) -> (set, set):
         if Xb[0] == "S": return set(("a")), None
         if Xb[0] == "A": return set(("a")), None
         if Xb[0] == "B": return set(("b", "c", "q", "a")), None
@@ -48,8 +48,7 @@ class CFG:
                 return False
         return True
 
-
-    def follow_set(self, A: str, T: set = None) -> (set(), set()):
+    def follow_set(self, A: str, T: set = None) -> (set, set):
         if T is None:
             T = set()
         if A in T:
@@ -72,6 +71,7 @@ class CFG:
                     follow_set = follow_set | G
 
         return follow_set, T
+
 
 # file_name : a file in the cwd of the script
 # returns : a list of lines with newlines extra spaces removed
@@ -162,7 +162,7 @@ def main(file):
 
     grammar = CFG(cfg, rules, terminals, start_symbol)
 
-    print(grammar.follow_set("B"))
+    print(grammar.follow_set("A"))
 
 
 if __name__ == '__main__':
