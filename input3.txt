@@ -1,0 +1,7 @@
+S -> A B C $
+A -> a A | lambda
+B -> b t u
+   | D
+C -> C c | q r s
+D -> x D E y D z | d
+E -> e E e | lambda

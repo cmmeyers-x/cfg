@@ -1,0 +1,10 @@
+S -> A B C $
+A -> w A C A t
+   | F
+   | lambda
+B -> m n o p
+C -> B A z
+   | A B C
+E -> s | t
+F -> z E
+   | lambda
