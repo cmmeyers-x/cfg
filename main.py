@@ -12,15 +12,16 @@ class CFG:
         self.start_symbol = start_symbol
 
     def derives_to_lambda(self, L: str, T: deque) -> bool:
-        #print(T)
+        print(T)
         for rule in self.rules:
             if not rule[0] == L:
                 continue
             if T.count(rule[0]) > 0:
-                print("T already contains L")
                 continue
             if rule[1] == 'lambda':
                 return True
+            if rule[1] == ' ':
+                continue
             terms = rule[1]
             rule_contains_terminal = False
             for term in terms:
@@ -35,10 +36,9 @@ class CFG:
                 all_derive_lambda = self.derives_to_lambda(term, T)
                 T.pop()
             if not all_derive_lambda:
-                break
-            if all_derive_lambda:
+                return False
+            else:
                 return True
-        return False
 #        if L == "S": return False
 #        if L == "A": return False
 #        if L == "B": return True
