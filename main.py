@@ -18,15 +18,60 @@ class CFG:
         if L == "C": return False
 
     def first_set(self, Xb: list, T: set = None) -> (set(), set()):
-        if Xb[0] == "S": return set("a"), None
-        if Xb[0] == "A": return set("a"), None
-        if Xb[0] == "B": return set("b", "c", "q", "a"), None
-        if Xb[0] == "C": return set("c", "q"), None
+        if Xb[0] == "S": return set(("a")), None
+        if Xb[0] == "A": return set(("a")), None
+        if Xb[0] == "B": return set(("b", "c", "q", "a")), None
+        if Xb[0] == "C": return set(("c", "q")), None
+
+        return set(Xb[0]), None
+
+    # Return list of rules with rhs occurrences of non_terminal
+    def find_rhs_occurrences(self, non_terminal: str) -> list:
+        occurrences = []
+        for (lhs, rhs) in self.rules:
+            if non_terminal in rhs:
+                occurrences.append((lhs, rhs))
+        return occurrences
+
+    # returns true a char c in character sequence is a part of non-terminals or terminals
+    def pi_and_sigma_intersection(self, char_sequence: list) -> bool:
+        for c in char_sequence:
+            if c in self.terminals or c in self.cfg[c]:
+                return True
+        return False
+
+    # derives to lambda true for all
+    def derives_to_lambda_forall(self, char_sequence: list) -> bool:
+        for c in char_sequence:
+            if c == ' ': continue
+            if not self.derives_to_lambda(c, deque()):
+                return False
+        return True
 
 
-    def follow_set(self, A: str, T: set=None) -> (set(), set()):
-        pass
+    def follow_set(self, A: str, T: set = None) -> (set(), set()):
+        if T is None:
+            T = set()
+        if A in T:
+            return set(), T
 
+        follow_set = set()
+        for lhs, rhs in self.find_rhs_occurrences(A):
+            non_t_in_rhs = rhs.find(A, 0)
+            pi = []
+            while non_t_in_rhs != -1:
+                pi.append(rhs[non_t_in_rhs + 1:].strip())
+                non_t_in_rhs = rhs.find(A, non_t_in_rhs + 1)
+
+            for p in pi:
+                if len(p) > 0:
+                    G, _ = self.first_set(p)
+                    follow_set = follow_set | G
+                elif len(p) == 0 or (not self.pi_and_sigma_intersection(p) and self.derives_to_lambda_forall(p)):
+                    G, _ = self.follow_set(lhs)
+                    follow_set = follow_set | G
+
+        return follow_set, T
 
 # file_name : a file in the cwd of the script
 # returns : a list of lines with newlines extra spaces removed
@@ -47,7 +92,7 @@ def parse_file(file_name: str) -> list:
 
 
 # lines : a list of lines that describe production rules
-# returns : a CFG object
+# returns : a cfg dict
 def generate_cfg(lines: list) -> dict:
     cfg = {}
     non_terminal = ""
@@ -115,7 +160,9 @@ def main(file):
         print(term, end=" ")
     print("")
 
-    grammer = CFG(cfg, rules, terminals, start_symbol)
+    grammar = CFG(cfg, rules, terminals, start_symbol)
+
+    print(grammar.follow_set("B"))
 
 
 if __name__ == '__main__':
