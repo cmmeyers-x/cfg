@@ -12,10 +12,37 @@ class CFG:
         self.start_symbol = start_symbol
 
     def derives_to_lambda(self, L: str, T: deque) -> bool:
-        if L == "S": return False
-        if L == "A": return False
-        if L == "B": return True
-        if L == "C": return False
+        #print(T)
+        for rule in self.rules:
+            if not rule[0] == L:
+                continue
+            if T.count(rule[0]) > 0:
+                print("T already contains L")
+                continue
+            if rule[1] == 'lambda':
+                return True
+            terms = rule[1]
+            rule_contains_terminal = False
+            for term in terms:
+                if term in self.rules:
+                    rule_contains_terminal = True
+                    break
+            if rule_contains_terminal:
+                continue
+            all_derive_lambda = True
+            for term in terms:
+                T.append(term)
+                all_derive_lambda = self.derives_to_lambda(term, T)
+                T.pop()
+            if not all_derive_lambda:
+                break
+            if all_derive_lambda:
+                return True
+        return False
+#        if L == "S": return False
+#        if L == "A": return False
+#        if L == "B": return True
+#        if L == "C": return False
 
     def first_set(self, Xb: list, T: set = None) -> (set, set):
         if Xb[0] == "S": return set(("a")), None
@@ -162,6 +189,8 @@ def main(file):
 
     grammar = CFG(cfg, rules, terminals, start_symbol)
 
+    T = deque([])
+    print(grammar.derives_to_lambda("A", T))
     print(grammar.follow_set("A"))
 
 
