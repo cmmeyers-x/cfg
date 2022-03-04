@@ -8,8 +8,9 @@ class CFG:
 	def __init__(self, cfg: dict, rules: list, terminals: set, start_symbol: str):
 		self.cfg = cfg  # A dictionary with key : non-terminal, value : list of production results
 		self.rules = rules  # a list of tuple (non-terminal, production result)
-		self.terminals = terminals  # non_terminals are just keys in cfg
+		self.terminals = terminals  # plus lambda
 		self.start_symbol = start_symbol
+		# non_terminals are just keys in cfg
 
 	# Get a rule in tuple format
 	# def get_rule(self, nt):
@@ -18,8 +19,15 @@ class CFG:
 	# 	except KeyError as E: pass
 	# 	return rule
 
-	def derives_to_lambda(self, L: str, T: deque) -> bool:
-		prod_of_L = self.cfg[L] # gets all productions with Non-Terminal L on LHS
+	def derives_to_lambda(self, L: str, T: deque = None) -> bool:
+		if T is None:
+			T = deque()
+
+		prod_of_L = []
+		# gets all productions with Non-Terminal L on LHS
+		if L in self.cfg:
+			prod_of_L = self.cfg[L]
+
 		for production in prod_of_L:
 			if production in T:  # if we have searched with that Non-Terminal before
 				continue
@@ -47,41 +55,35 @@ class CFG:
 
 			if all_derive_lambda:
 				return True
-
 		return False
 
-	# XB List of tuples (same format as grammar.rules)
 	# This allows easier checking and insertion into T
 	def first_set(self, XB: list, T: set = None) -> (set, set):
 		# Create the set if first call
-		# T is set of grammar rules to ignore
+		# T is set of grammar rules to ignore to prevent searching Non-Terminals already visited
 		if T is None:
 			T = set()
-
 		X = XB[0]
-
 		# X is a terminal symbol
-		print(f"X: {X}")
 		if X in self.terminals:
 			return set(X), T
 
-		# Recursively build the new set
-		B = self.cfg[X]
-		print(f"B: {B}")
 		F = set()
 		if X not in T:
 			T.add(X)
-			for pr in B:
-				G, I = self.first_set(B, T)
-				for element in G: F.add(element)
+			productions = []
+			if X in self.cfg:
+				productions = self.cfg[X]
+			for prod in productions:
+				G, _ = self.first_set(prod, T)
+				F = F | G
 
-		# Determine if additional rules need to be added
-		Q = deque([])
-		if self.derives_to_lambda(X, Q) and len(B) > 0:
-			G, I = self.first_set(B, T)
-			for element in G: F.add(element)
+		if self.derives_to_lambda(X) and len(XB[1:]) > 0:
+			G, _ = self.first_set(XB[1:], T.copy())
+			F = F | G
 
 		return F, T
+
 
 	# Return list of rules with rhs occurrences of non_terminal
 	def find_rhs_occurrences(self, non_terminal: str) -> list:
@@ -221,10 +223,8 @@ def main(file):
 
 	grammar = CFG(cfg, rules, terminals, start_symbol)
 
-	T1 = deque([])
-	T2 = set()
-	print(f"derives to lambda: {grammar.derives_to_lambda('S', T1)}")
-	# print(f"First set of 'A': {grammar.first_set(['A'], T2)[0]}")
+	print(f"derives to lambda: {grammar.derives_to_lambda('A')}")
+	print(f"First set of 'A': {grammar.first_set(['S'])}")
 	# print(f"Follow set of 'A': {grammar.follow_set('A')}")
 
 

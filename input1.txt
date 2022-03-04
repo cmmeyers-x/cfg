@@ -1,5 +1,5 @@
 S -> A B $
-  | C
+  | A D
 A -> a
   | lambda
 B -> B b 
