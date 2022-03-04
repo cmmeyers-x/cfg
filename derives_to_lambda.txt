@@ -1,0 +1,6 @@
+S -> Z $
+Z -> A B C
+Z -> C | A B
+A -> a b | lambda
+B -> b a | lambda
+C -> c | b

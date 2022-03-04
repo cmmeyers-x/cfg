@@ -19,37 +19,36 @@ class CFG:
 	# 	return rule
 
 	def derives_to_lambda(self, L: str, T: deque) -> bool:
-		#print(T)
-		for rule in self.rules:
-			if not rule[0] == L:
+		prod_of_L = self.cfg[L] # gets all productions with Non-Terminal L on LHS
+		for production in prod_of_L:
+			if production in T:  # if we have searched with that Non-Terminal before
 				continue
-			if T.count(rule[0]) > 0:
-				continue
-			if rule[1] == 'lambda':
+			if production == 'lambda':
 				return True
-			if rule[1] == ' ':
-				continue
-			terms = rule[1]
-			rule_contains_terminal = False
-			for term in terms:
-				if term in self.rules:
-					rule_contains_terminal = True
+			terminal_in_production = False
+			for term in production:
+				if term in self.terminals:
+					terminal_in_production = True
 					break
-			if rule_contains_terminal:
+			if terminal_in_production:
 				continue
+
 			all_derive_lambda = True
-			for term in terms:
-				T.append(term)
-				all_derive_lambda = self.derives_to_lambda(term, T)
+			# for each X_i (a non-terminal) in the production recurse
+			# We know it's a non-terminal if it's in the cfg dictionary
+			for X_i in production:
+				if X_i not in self.cfg:
+					continue
+				T.append(X_i)  # pushing non-terminal on T for recursive search
+				all_derive_lambda = self.derives_to_lambda(X_i, T.copy())
 				T.pop()
-			if not all_derive_lambda:
-				return False
-			else:
+				# if one term in the RHS of the rule does not derive to Lambda the entire production can't
+				if not all_derive_lambda: break
+
+			if all_derive_lambda:
 				return True
-#        if L == "S": return False
-#        if L == "A": return False
-#        if L == "B": return True
-#        if L == "C": return False
+
+		return False
 
 	# XB List of tuples (same format as grammar.rules)
 	# This allows easier checking and insertion into T
@@ -212,7 +211,7 @@ def main(file):
 	for key, val in cfg.items():
 		for v in val:
 			for value in v.split(' '):
-				if value not in cfg:  # if not a non terminal
+				if value not in cfg and value != '$':  # if not a non terminal
 					terminals.add(value)
 
 	print("\nTerminals")
@@ -224,9 +223,9 @@ def main(file):
 
 	T1 = deque([])
 	T2 = set()
-	print(f"'A' derives to lambda: {grammar.derives_to_lambda('A', T1)}")
-	print(f"First set of 'A': {grammar.first_set(['A'], T2)[0]}")
-	print(f"Follow set of 'A': {grammar.follow_set('A')}")
+	print(f"derives to lambda: {grammar.derives_to_lambda('S', T1)}")
+	# print(f"First set of 'A': {grammar.first_set(['A'], T2)[0]}")
+	# print(f"Follow set of 'A': {grammar.follow_set('A')}")
 
 
 if __name__ == '__main__':
