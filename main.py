@@ -136,6 +136,15 @@ class CFG:
 
         return follow_set, T
 
+    def predict_set(self, A: str, T: set = None) -> set:
+        return None
+
+    def build_LL1_parsing_table(self):
+        return None
+
+    def build_parse_tree(self, P, table, token_stream):
+        return None
+
 
 # file_name : a file in the cwd of the script
 # returns : a list of lines with newlines extra spaces removed
