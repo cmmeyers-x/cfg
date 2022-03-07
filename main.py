@@ -10,7 +10,7 @@ class CFG:
         self.rules = rules  # a list of tuple (non-terminal, production result)
         self.terminals = terminals  # plus lambda
         self.start_symbol = start_symbol
-
+        self.predict_sets = None # List of tuple (tuple (non-terminal, production result), set of predict terminals)
     # non_terminals are just keys in cfg
 
     # Get a rule in tuple format
@@ -136,8 +136,16 @@ class CFG:
 
         return follow_set, T
 
-    def predict_set(self, A: str, T: set = None) -> set:
-        return None
+    def predict_set(self):
+        self.predict_sets = []
+        for lhs, rhs in self.rules:
+            rule = (lhs, rhs)
+            predict_set, _ = self.first_set(rhs)  # ignore the second set result since it's not needed
+            # if rhs derives to lambda in more than 1 steps include follow of A
+            if self.derives_to_lambda(rhs):
+                predict_set = predict_set | self.follow_set(lhs)[0]
+            self.predict_sets.append(rule, predict_set)
+
 
     def build_LL1_parsing_table(self):
         return None
@@ -236,7 +244,7 @@ def main(file):
     grammar = CFG(cfg, rules, terminals, start_symbol)
 
     print(f"derives to lambda: {grammar.derives_to_lambda('A')}")
-    print(f"First set: {grammar.first_set('Times_Expr')}")
+    print(f"First set: {grammar.first_set('A')}")
 
 
 # print(f"Follow set of 'A': {grammar.follow_set('A')}")
