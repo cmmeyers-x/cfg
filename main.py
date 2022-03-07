@@ -1,6 +1,18 @@
 import sys
 from collections import deque
 
+class TreeNode:
+    def __init__(self, data, parent):
+        self.data = data
+        self.parent = parent
+        self.children = []
+
+    def add_as_rightmost_child(self, data):
+        new_node = TreeNode(data, self)
+        self.children.append(new_node)
+
+    def get_rightmost_child(self):
+        return self.children[-1]
 
 # A class representing a Context Free Grammar
 # Assume all fields in Constructor are present. You should just have to interface with this
@@ -154,12 +166,84 @@ class CFG:
                 predict_set = predict_set | {'m', 'n', 'p'}  # remove once follow_set works
             self.predict_sets.append((rule, predict_set))
 
+    def get_predict_set(self, rule):
+        for prod_rule, pred_set in self.predict_sets:
+            if prod_rule == rule:
+                return pred_set
+    #following procedure FILLTABLE(LLTable)
+    #in Figure 5.9 on page 153 of the texbook
+#    def build_LL1_parsing_table(self):
+#        return None
 
-    def build_LL1_parsing_table(self):
-        return None
 
-    def build_parse_tree(self, P, table, token_stream):
-        return None
+    def build_parse_tree(self, P, ts, LLT):
+        T = TreeNode('Root', None)
+        K = []
+        Current = T
+        K.append(self.start_symbol)
+        while len(K) > 0:
+            x = K.pop()
+            if x in self.non_terminals:
+                p = P[LLT[x][ts.peek()]]
+                if p == -1:
+                    print("Syntax Error! #1")
+                    exit(1)
+                K.append('MARKER')
+                R = self.rules[p][1]
+                for i in range(len(R), 0, -1):
+                    K.append(R[i])
+                n = [x, []]
+                Current.add_as_rightmost_child(x)
+                Current = Current[1][-1]
+            elif x in self.terminals or x == 'lambda':
+                if x in self.terminals:
+                    if not x == ts.peek():
+                        print("Syntax Error! #2")
+                        exit(1)
+                    x = ts.pop()
+                Current.add_as_rightmost_child(x)
+            elif x == 'MARKER':
+                Current = Current.parent
+        return Current.children
+                
+class LLTable:
+    def __init__(self, G):
+        self.N_indexes = []
+        self.T_indexes = []
+        self.fill_indices(G)
+        self.table = None
+        self.fill_table(G)
+#        self.table = ([None] * len(self.T_indexes)) * len(self.N_indexes)
+
+    def fill_indices(self, G):
+        for N in G.cfg.keys():
+            self.N_indexes.append(N)
+        for T in G.terminals:
+            self.T_indexes.append(T)
+        
+    def fill_table(self, G):
+#        N = G.cfg.keys()
+#        for A in N:
+#            A_index = self.N_indexes.index(A)
+#            for p in G.cfg[A]:
+#                for a in G.predict_set(p):
+#                    a_index = self.T_indexes.index(a)
+#                    self.table[A_index][a_index] = p
+        self.table = [[0] * len(self.T_indexes) for i in range(len(self.N_indexes))]
+        for i in range(0, len(G.rules)):
+            A, RHS = G.rules[i]
+            A_index = self.N_indexes.index(A)
+            a_list = G.get_predict_set(A)
+            if a_list == None:
+                continue
+            for a in a_list:
+                a_index = self.T_indexes.index(a)
+                self.table[A][a] = i
+
+    def get_production(self, A, a):
+        A_index = self.N_indexes.index(A)
+        a_index = self.T_indexes.index(a)
+        return self.table[A_index][a_index]
 
 
 # file_name : a file in the cwd of the script
@@ -257,6 +341,12 @@ def main(file):
 
 
     print(f"Follow set of 'A': {grammar.follow_set('A')}")
+
+    LL1Table = LLTable(grammar)
+    for entry in LL1Table.table:
+        print(entry)
+
+    ts = open()
 
 
 if __name__ == '__main__':
