@@ -162,8 +162,8 @@ class CFG:
             predict_set, _ = self.first_set(rhs)  # ignore the second set result since it's not needed
             # if rhs derives to lambda in more than 1 steps include follow of A
             if self.derives_to_lambda(rhs):
-                #  predict_set = predict_set | self.follow_set(lhs)[0] # uncomment once follow_set works
-                predict_set = predict_set | {'m', 'n', 'p'}  # remove once follow_set works
+                predict_set = predict_set | self.follow_set(lhs)[0] # uncomment once follow_set works
+                #predict_set = predict_set | {'m', 'n', 'p'}  # remove once follow_set works
             self.predict_sets.append((rule, predict_set))
 
     def get_predict_set(self, rule):
@@ -181,10 +181,13 @@ class CFG:
         K = []
         Current = T
         K.append(self.start_symbol)
+        current_file_loc = 0
         while len(K) > 0:
             x = K.pop()
-            if x in self.non_terminals:
-                p = P[LLT[x][ts.peek()]]
+            #tok = ts.read(1)
+            #ts.seek(current_file_loc)
+            if x in self.cfg.keys():
+                p = P[LLT.get_production(x, ts.peek().decode('utf-8'))]
                 if p == -1:
                     print("Syntax Error! #1")
                     exit(1)
@@ -197,9 +200,12 @@ class CFG:
                 Current = Current[1][-1]
             elif x in self.terminals or x == 'lambda':
                 if x in self.terminals:
-                    if not x == ts.peek():
+                    if not x == ts.peek().decode('utf-8'):
                         print("Syntax Error! #2")
                         exit(1)
+                    #x = tok
+                    #current_file_loc += 1
+                    #ts.seek(current_file_loc)
                     x = ts.pop()
                 Current.add_as_rightmost_child(x)
             elif x == 'MARKER':
@@ -216,10 +222,14 @@ class LLTable:
 #        self.table = ([None] * len(self.T_indexes)) * len(self.N_indexes)
 
     def fill_indices(self, G):
+        #print(G.rules)
         for N in G.cfg.keys():
             self.N_indexes.append(N)
+            #print(self.N_indexes)
         for T in G.terminals:
             self.T_indexes.append(T)
+        #print(self.N_indexes)
+        #print(self.T_indexes)
         
     def fill_table(self, G):
 #        N = G.cfg.keys()
@@ -229,16 +239,21 @@ class LLTable:
 #                for a in G.predict_set(p):
 #                    a_index = self.T_indexes.index(a)
 #                    self.table[A_index][a_index] = p
+        #print(self.N_indexes)
+        #print(self.T_indexes)
         self.table = [[0] * len(self.T_indexes) for i in range(len(self.N_indexes))]
         for i in range(0, len(G.rules)):
+            #print(i)
             A, RHS = G.rules[i]
             A_index = self.N_indexes.index(A)
-            a_list = G.get_predict_set(A)
+            a_list = G.get_predict_set((A, RHS))
+            print((A, RHS))
+            print(a_list)
             if a_list == None:
                 continue
             for a in a_list:
                 a_index = self.T_indexes.index(a)
-                self.table[A][a] = i
+                self.table[A_index][a_index] = i
 
     def get_production(self, A, a):
         A_index = self.N_indexes.index(A)
@@ -291,8 +306,8 @@ def generate_cfg(lines: list) -> dict:
     return cfg
 
 
-def main(file):
-    lines = parse_file(file)
+def main(file_name, token):
+    lines = parse_file(file_name)
     cfg = generate_cfg(lines)
 
     # Print all rules
@@ -343,14 +358,16 @@ def main(file):
     print(f"Follow set of 'A': {grammar.follow_set('A')}")
 
     LL1Table = LLTable(grammar)
-    for entry in LL1Table.table:
-        print(entry)
+    print(LL1Table.table)
 
-    ts = open()
+    ts = open(token, 'rb')
+    tree = grammar.build_parse_tree(grammar.rules,ts, LL1Table)
+    print(tree)
+    
 
 
 if __name__ == '__main__':
-    if (len(sys.argv) != 2):
+    if (len(sys.argv) != 3):
         print("please pass file")
         exit(1)
-    main(sys.argv[1])
+    main(sys.argv[1], sys.argv[2])
