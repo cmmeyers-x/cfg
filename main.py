@@ -10,7 +10,7 @@ class CFG:
         self.rules = rules  # a list of tuple (non-terminal, production result)
         self.terminals = terminals  # plus lambda
         self.start_symbol = start_symbol
-        self.predict_sets = None # List of tuple (tuple (non-terminal, production result), set of predict terminals)
+        self.predict_sets = None  # List of tuple (tuple (non-terminal, production result), set of predict terminals)
     # non_terminals are just keys in cfg
 
     # Get a rule in tuple format
@@ -21,6 +21,9 @@ class CFG:
     # 	return rule
 
     def derives_to_lambda(self, L: str, T: deque = None) -> bool:
+        if L == "lambda":
+            return True
+
         if T is None:
             T = deque()
 
@@ -67,6 +70,9 @@ class CFG:
             T = set()
 
         X = XB.strip().split(' ')[0]
+        if X == "lambda":
+            return set(), T
+
         # X is a terminal symbol
         if X in self.terminals:
             return set(X), T
@@ -143,8 +149,9 @@ class CFG:
             predict_set, _ = self.first_set(rhs)  # ignore the second set result since it's not needed
             # if rhs derives to lambda in more than 1 steps include follow of A
             if self.derives_to_lambda(rhs):
-                predict_set = predict_set | self.follow_set(lhs)[0]
-            self.predict_sets.append(rule, predict_set)
+                #  predict_set = predict_set | self.follow_set(lhs)[0] # uncomment once follow_set works
+                predict_set = predict_set | {'m', 'n', 'p'}  # remove once follow_set works
+            self.predict_sets.append((rule, predict_set))
 
 
     def build_LL1_parsing_table(self):
@@ -243,8 +250,9 @@ def main(file):
 
     grammar = CFG(cfg, rules, terminals, start_symbol)
 
-    print(f"derives to lambda: {grammar.derives_to_lambda('A')}")
-    print(f"First set: {grammar.first_set('A')}")
+    print(f"derives to lambda: {grammar.derives_to_lambda('lambda')}")
+    print(f"First set: {grammar.first_set('S')}")
+    grammar.predict_set()
 
 
 # print(f"Follow set of 'A': {grammar.follow_set('A')}")
