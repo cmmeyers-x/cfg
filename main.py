@@ -123,6 +123,7 @@ class CFG:
         if A in T:
             return set(), T
 
+        T.add(A)
         follow_set = set()
         for lhs, rhs in self.find_rhs_occurrences(A):
             non_t_in_rhs = rhs.find(A, 0)
@@ -133,11 +134,11 @@ class CFG:
 
             for p in pi:
                 if len(p) > 0:
-                    T = set()
-                    G, _ = self.first_set([p], T)
+                    I = set()
+                    G, _ = self.first_set(p, T)
                     follow_set = follow_set | G
                 elif len(p) == 0 or (not self.pi_and_sigma_intersection(p) and self.derives_to_lambda_forall(p)):
-                    G, _ = self.follow_set(lhs)
+                    G, _ = self.follow_set(lhs, T.copy())
                     follow_set = follow_set | G
 
         return follow_set, T
@@ -255,7 +256,7 @@ def main(file):
     grammar.predict_set()
 
 
-# print(f"Follow set of 'A': {grammar.follow_set('A')}")
+    print(f"Follow set of 'A': {grammar.follow_set('A')}")
 
 
 if __name__ == '__main__':
