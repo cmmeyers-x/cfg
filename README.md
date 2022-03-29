@@ -4,7 +4,7 @@
 This project is a collaborative project for CSCI425: Compiler Design *TODO TODO*  
 
 # USAGE
-`python parser.py <grammar config> \[token stream\]`  
+`python parser.py <grammar config> [token stream]`  
 
 Grammar config defines a language in plain text (file extension: `.cfg`) EX:  
 ```
