@@ -18,19 +18,12 @@ class TreeNode:
 # Assume all fields in Constructor are present. You should just have to interface with this
 class CFG:
     def __init__(self, cfg: dict, rules: list, terminals: set, start_symbol: str):
-        self.cfg = cfg  # A dictionary with key : non-terminal, value : list of production results
-        self.rules = rules  # a list of tuple (non-terminal, production result)
-        self.terminals = terminals  # plus lambda
+        self.cfg = cfg              # Dictionary with key : non-terminal, value : list of production results
+        self.rules = rules          # List of tuple (non-terminal, production result)
+        self.terminals = terminals  # Plus lambda; Non-terminals are keys in CFG
         self.start_symbol = start_symbol
-        self.predict_sets = None  # List of tuple (tuple (non-terminal, production result), set of predict terminals)
-    # non_terminals are just keys in cfg
-
-    # Get a rule in tuple format
-    # def get_rule(self, nt):
-    # 	rule = (nt, None)
-    # 	try: rule = (nt, self.cfg[nt])
-    # 	except KeyError as E: pass
-    # 	return rule
+        self.predict_sets = None    # List of tuple (tuple (non-terminal, production result), set of predict terminals)
+        self.parse_table = None     # Table built as result of build_parse_table()
 
     def derives_to_lambda(self, L: str, T: deque = None) -> bool:
         if L == "lambda":
@@ -159,22 +152,22 @@ class CFG:
         self.predict_sets = []
         for lhs, rhs in self.rules:
             rule = (lhs, rhs)
-            predict_set, _ = self.first_set(rhs)  # ignore the second set result since it's not needed
+            predict_set = self.first_set(rhs)[0]    # ignore the second set result since it's not needed
+
             # if rhs derives to lambda in more than 1 steps include follow of A
             if self.derives_to_lambda(rhs):
-                predict_set = predict_set | self.follow_set(lhs)[0] # uncomment once follow_set works
-                #predict_set = predict_set | {'m', 'n', 'p'}  # remove once follow_set works
+                predict_set = predict_set | self.follow_set(lhs)[0]
+
             self.predict_sets.append((rule, predict_set))
 
     def get_predict_set(self, rule):
         for prod_rule, pred_set in self.predict_sets:
             if prod_rule == rule:
                 return pred_set
-    #following procedure FILLTABLE(LLTable)
-    #in Figure 5.9 on page 153 of the texbook
-#    def build_LL1_parsing_table(self):
-#        return None
 
+    # Following procedure FILLTABLE(LLTable) in Figure 5.9 on page 153 of the texbook
+    def build_parse_table(self):
+        self.parse_table = ParseTable(self)
 
     def build_parse_tree(self, P, ts, LLT):
         T = TreeNode('Root', None)
@@ -211,54 +204,57 @@ class CFG:
             elif x == 'MARKER':
                 Current = Current.parent
         return Current.children
-                
-class LLTable:
-    def __init__(self, G):
-        self.N_indexes = []
-        self.T_indexes = []
-        self.fill_indices(G)
-        self.table = None
-        self.fill_table(G)
-#        self.table = ([None] * len(self.T_indexes)) * len(self.N_indexes)
 
-    def fill_indices(self, G):
-        #print(G.rules)
-        for N in G.cfg.keys():
-            self.N_indexes.append(N)
-            #print(self.N_indexes)
-        for T in G.terminals:
-            self.T_indexes.append(T)
+class ParseTable:
+    def __init__(self, grammar):
+        self.data = None                # Renamed from table
+        self.row_labels = []            # Renamed from N_indexes
+        self.col_labels = []            # Renamed from T_indexes
+
+        self.create_labels(grammar)     # Renamed from fill_indices
+        self.populate(grammar)          # Renamed from fill_table
+        # self.table = ([None] * len(self.T_indexes)) * len(self.N_indexes)
+
+    def create_labels(self, grammar):
+        for N in grammar.cfg.keys():
+            self.row_labels.append(N)
+
+        for T in grammar.terminals:
+            self.col_labels.append(T)
+
         #print(self.N_indexes)
         #print(self.T_indexes)
-        
-    def fill_table(self, G):
-#        N = G.cfg.keys()
-#        for A in N:
-#            A_index = self.N_indexes.index(A)
-#            for p in G.cfg[A]:
-#                for a in G.predict_set(p):
-#                    a_index = self.T_indexes.index(a)
-#                    self.table[A_index][a_index] = p
-        #print(self.N_indexes)
-        #print(self.T_indexes)
-        self.table = [[0] * len(self.T_indexes) for i in range(len(self.N_indexes))]
-        for i in range(0, len(G.rules)):
-            #print(i)
-            A, RHS = G.rules[i]
-            A_index = self.N_indexes.index(A)
-            a_list = G.get_predict_set((A, RHS))
-            print((A, RHS))
-            print(a_list)
-            if a_list == None:
-                continue
-            for a in a_list:
-                a_index = self.T_indexes.index(a)
-                self.table[A_index][a_index] = i
 
-    def get_production(self, A, a):
-        A_index = self.N_indexes.index(A)
-        a_index = self.T_indexes.index(a)
-        return self.table[A_index][a_index]
+    def populate(self, grammar):
+        # N = G.cfg.keys()
+        # for A in N:
+        #    A_index = self.N_indexes.index(A)
+        #    for p in G.cfg[A]:
+        #        for a in G.predict_set(p):
+        #            a_index = self.T_indexes.index(a)
+        #            self.table[A_index][a_index] = p
+
+        self.data = [[0] * len(self.col_labels) for i in range(len(self.row_labels))]
+            for i in range(0, len(grammar.rules)):
+                A, RHS = grammar.rules[i]
+                A_index = self.row_labels.index(A)
+                a_list = grammar.get_predict_set((A, RHS))
+
+                # print((A, RHS))
+                # print(a_list)
+
+                if a_list == None:
+                    continue
+
+                for a in a_list:
+                    a_index = self.col_labels.index(a)
+                    self.data[A_index][a_index] = i
+
+    # Return the production rule respective to the non-terminal and terminal entries
+    def get_production(self, nonterminal, terminal):
+        row = self.row_labels.index(nonterminal)
+        column = self.col_labels.index(terminal)
+        return self.data[row][column]
 
 
 # file_name : a file in the cwd of the script
@@ -306,33 +302,36 @@ def generate_cfg(lines: list) -> dict:
     return cfg
 
 
-def main(file_name, token):
+def main(file_name, token = None):
     lines = parse_file(file_name)
     cfg = generate_cfg(lines)
 
-    # Print all rules
-    rules = []  # tuple of NonTerminal -> Result
-    print("Rules:")
-    rule_num = 0
-    for key, val in cfg.items():
-        for result in val:
-            rules.append((key, result))
-            print(rule_num, "\t", key, "->", result)
-            rule_num += 1
+    ##########################################
+    print("  -- GRAMMAR --")
 
     # Print start symbol
     start_symbol = ""
     for key, val in cfg.items():
         for result in val:
             if "$" in result:
-                print("Start symbol:", key)
+                print("Start Symbol:", key)
                 start_symbol = key
                 break
 
+    # Print all rules
+    rules = []  # tuple of NonTerminal -> Result
+    # print("Rules:")
+    rule_num = 0
+    for key, val in cfg.items():
+        for result in val:
+            rules.append((key, result))
+            print("  ", rule_num, " : \t", key, "->", result)
+            rule_num += 1
+
     # Print non-terminals:
-    print("\nNon Terminals:")
+    print("\nNon-terminals:\n  ", end = "")
     for key in cfg.keys():
-        print(key, end=" ")
+        print(key, end = " ")
     print("")
 
     # Print terminals
@@ -343,19 +342,65 @@ def main(file_name, token):
                 if value not in cfg and value != '$':  # if not a non terminal
                     terminals.add(value)
 
-    print("\nTerminals")
+    print("\nTerminals:\n  ", end = "")
     for term in terminals:
-        print(term, end=" ")
+        print(term, end = " ")
     print("\n")
 
+    ##########################################
+    print("\n  -- PREDICTION --")
     grammar = CFG(cfg, rules, terminals, start_symbol)
+    grammar.predict_set()       # Update the grammar's predict sets
 
-    print(f"derives to lambda: {grammar.derives_to_lambda('lambda')}")
-    print(f"First set: {grammar.first_set('S')}")
-    grammar.predict_set()
+    # Output which non-terminals derive to lambda
+    print("Derives to lambda:\n  ", end = "")
+    for key in grammar.cfg.keys():
+        if grammar.derives_to_lambda(key):
+            print(key, end = " ")
+    print()
 
+    # Output first sets of all non-terminals
+    print("\nFirst sets:")
+    for key in grammar.cfg.keys():
+        print(f"  {key} :", end = "\t")
+        first_set = grammar.first_set(key)[0]
+        if len(first_set) < 1:
+            print("NONE - (This is probably an error)")
+            continue
 
-    print(f"Follow set of 'A': {grammar.follow_set('A')}")
+        print(first_set)
+
+        # for terminal in first_set:
+        #     print(terminal, end = " ")
+        # print()
+
+    # Output follow sets of all non-terminals
+    print("\nFollow sets:")
+    for key in grammar.cfg.keys():
+        print(f"  {key} :", end = "\t")
+        follow_set = grammar.follow_set(key)[0]
+        if len(follow_set) < 1:
+            print("NONE")
+            continue
+
+        print(follow_set)
+
+    print("\nPredict sets (see GRAMMAR section for ruleno):")
+    for x, predict_set in enumerate(grammar.predict_sets):
+        print(f"  {x} :", end = "\t")
+
+        if len(predict_set[1]) < 1:
+            print("NONE")
+            continue
+
+        print(predict_set[1])
+
+    ##########################################
+    print("\n  -- PARSING --")
+    grammar.build_parse_table()
+
+    # DEBUG EXIT
+    exit()
 
     LL1Table = LLTable(grammar)
     print(LL1Table.table)
@@ -363,11 +408,12 @@ def main(file_name, token):
     ts = open(token, 'rb')
     tree = grammar.build_parse_tree(grammar.rules,ts, LL1Table)
     print(tree)
-    
 
 
 if __name__ == '__main__':
-    if (len(sys.argv) != 3):
-        print("please pass file")
-        exit(1)
-    main(sys.argv[1], sys.argv[2])
+    # if (len(sys.argv) != 3):
+    #     print("please pass file")
+    #     exit(1)
+    # main(sys.argv[1], sys.argv[2])
+
+    main(sys.argv[1])
