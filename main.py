@@ -9,9 +9,11 @@ class TreeNode:
         self.children = []
 
     # Adds child in the rightmost location
+    # Returns the new child
     def add_child(self, data):
         new_node = TreeNode(data, self)
         self.children.append(new_node)
+        return new_node
 
     # Retrieves the child in the rightmost location
     def get_child(self):
@@ -208,13 +210,64 @@ class CFG:
     #   params and was renamed build_parse_tree_old() but is otherwise left intact
     def build_parse_tree(self, token_stream):
         tokens = self.parse_stream(token_stream)        # This is the queue of tokens
-        symbols = [self.startGoal]                      # This is the stack of tokens
-        tree = TreeNode("ROOT", None)
+        symbols = [self.start_symbol]                   # This is the stack of tokens
+        tree = TreeNode("ROOT", None)                   # Final parse tree
+        curNode = tree                                  # Active tree node
+        tokens.append(('$', None))
 
         # Continue parsing nodes until the queue is empty
-        while len(tokens) > 0:
-            token = tokens.pop(0)[0]                    # Token value not currently necessary
+        while len(symbols) > 0:
+            symbol = symbols.pop()
+            token = None
+            try: token = tokens[0][0]                   # Token value not currently necessary
+            except IndexError: pass
 
+            # Debug output
+            # print("STACK: ", symbol)
+            # print("QUEUE: ", token)
+
+            # Check for end of production marker
+            if symbol == '*':
+                curNode = curNode.parent
+                continue
+
+            # Check if the stack is a terminal and continue
+            if symbol in self.terminals:
+                if symbol == "lambda":
+                    curNode.add_child("lambda")
+                    continue
+
+                if symbol == token:
+                    # Remove the terminal from the queue
+                    tokens.pop(0)
+                    curNode.add_child(token)
+                    continue
+
+                # Terminals do not line up
+                print("SYNTAX ERROR!")
+                return tree
+
+            # If no token, there was a syntax error
+            if token is None:
+                print("SYNTAX ERROR!")
+                return tree
+
+            # Get the next production rule from the table
+            rule_i = self.parse_table.get_production(symbol, token)
+            LHS, RHS = self.rules[rule_i]
+
+            # More debug
+            # print("RULE: ", LHS, " -> ", RHS)
+
+            # Add the new rule to the stack
+            symbols.append('*')                         # End of production marker
+            for r in reversed(RHS.split()):
+                symbols.append(r)
+
+            # Update the tree
+            curNode = curNode.add_child(LHS)
+
+        if curNode != tree: print("SYNTAX ERROR!")
         return tree
 
     def build_parse_tree_old(self, token_stream):
@@ -308,20 +361,23 @@ class ParseTable:
         # Print column labels
         ret = "\t  ||\t"
         for label in self.col_labels:
-            ret += f"{'#' if label == 'lambda' else label}\t"
+            if label == 'lambda': continue
+            ret += f"{label}\t"
         ret += "\n"
 
         # Seperator bar
-        for x in range(len(self.col_labels) + 2):
+        for x in range(len(self.col_labels) + 1):
             ret += "========"
         ret += "\n"
 
         # Print the rows
         for x, row in enumerate(self.data):
-            ret += f"{self.row_labels[x]}\t  ||\t"
+            label = self.row_labels[x]
+            ret += f"{label}\t  ||\t"
 
             # Row data
-            for val in row:
+            for y, val in enumerate(row):
+                if self.col_labels[y] == 'lambda': continue
                 ret += f"{'-' if val < 0 else val}\t"
 
             ret += "\n"
@@ -407,7 +463,8 @@ def main(file_name, token_stream = None):
     print("")
 
     # Print terminals
-    terminals = set()
+    # terminals = set()
+    terminals = { '$' }
     for key, val in cfg.items():
         for v in val:
             for value in v.split(' '):
@@ -477,23 +534,24 @@ def main(file_name, token_stream = None):
     print(grammar.parse_table)
 
     parse_tree = grammar.build_parse_tree(token_stream)
+    print("Parse tree:  (forgive the currently jankey formatting)")
     print(parse_tree)
 
 
 if __name__ == '__main__':
-    tree = TreeNode("ooga", None)
-    tree.add_child("booga")
-    child = tree.get_child()
-    child.add_child("mr krabs")
-    child.add_child("has nice hair")
-
-    tree.add_child("my")
-    tree.add_child("tortuga")
-    child = tree.get_child()
-    child.add_child("SPICY")
-
-    print(tree)
-    exit()
+    # tree = TreeNode("ooga", None)
+    # tree.add_child("booga")
+    # child = tree.get_child()
+    # child.add_child("mr krabs")
+    # child.add_child("has nice hair")
+    #
+    # tree.add_child("my")
+    # tree.add_child("tortuga")
+    # child = tree.get_child()
+    # child.add_child("SPICY")
+    #
+    # print(tree)
+    # exit()
 
     argc = len(sys.argv)
     if (argc < 2):
