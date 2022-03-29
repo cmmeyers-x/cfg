@@ -22,7 +22,8 @@ All grammar terminals are assumed to be lowercase)
 `|` is reserved for rule alternation
 `lambda` specifies the empty string  
 
-Language config files define a stream of language tokens (intermediate format void a lexer framework)
+  
+Language config files define a stream of language tokens (intermediate format void a lexer framework; extension: `.tok`)  
 Each token is separated by newlines, each line containing either TOKEN or TOKEN TOKENVALUE  
 
 ### EXAMPLE
