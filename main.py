@@ -1,5 +1,6 @@
-import sys
 from collections import deque
+import copy
+import sys
 
 class TreeNode:
     def __init__(self, data, parent):
@@ -221,9 +222,7 @@ class ParseTable:
 
         for T in grammar.terminals:
             self.col_labels.append(T)
-
-        #print(self.N_indexes)
-        #print(self.T_indexes)
+        self.col_labels.sort()
 
     def populate(self, grammar):
         # N = G.cfg.keys()
@@ -234,27 +233,52 @@ class ParseTable:
         #            a_index = self.T_indexes.index(a)
         #            self.table[A_index][a_index] = p
 
-        self.data = [[0] * len(self.col_labels) for i in range(len(self.row_labels))]
-            for i in range(0, len(grammar.rules)):
-                A, RHS = grammar.rules[i]
-                A_index = self.row_labels.index(A)
-                a_list = grammar.get_predict_set((A, RHS))
+        self.data = [[-1] * len(self.col_labels) for i in range(len(self.row_labels))]
+        for i in range(0, len(grammar.rules)):
+            A, RHS = grammar.rules[i]
+            A_index = self.row_labels.index(A)
+            a_list = grammar.get_predict_set((A, RHS))
 
-                # print((A, RHS))
-                # print(a_list)
+            # print((A, RHS))
+            # print(a_list)
 
-                if a_list == None:
-                    continue
+            if a_list == None:
+                continue
 
-                for a in a_list:
-                    a_index = self.col_labels.index(a)
-                    self.data[A_index][a_index] = i
+            for a in a_list:
+                a_index = self.col_labels.index(a)
+                self.data[A_index][a_index] = i
 
     # Return the production rule respective to the non-terminal and terminal entries
     def get_production(self, nonterminal, terminal):
         row = self.row_labels.index(nonterminal)
         column = self.col_labels.index(terminal)
         return self.data[row][column]
+
+    # Output the production table
+    def __str__(self):
+        # Print column labels
+        ret = "\t  ||\t"
+        for label in self.col_labels:
+            ret += f"{'#' if label == 'lambda' else label}\t"
+        ret += "\n"
+
+        # Seperator bar
+        for x in range(len(self.col_labels) + 2):
+            ret += "========"
+        ret += "\n"
+
+        # Print the rows
+        for x, row in enumerate(self.data):
+            ret += f"{self.row_labels[x]}\t  ||\t"
+
+            # Row data
+            for val in row:
+                ret += f"{'-' if val < 0 else val}\t"
+
+            ret += "\n"
+
+        return ret
 
 
 # file_name : a file in the cwd of the script
@@ -385,7 +409,7 @@ def main(file_name, token = None):
 
         print(follow_set)
 
-    print("\nPredict sets (see GRAMMAR section for ruleno):")
+    print("\nPredict sets:  (see GRAMMAR section for ruleno)")
     for x, predict_set in enumerate(grammar.predict_sets):
         print(f"  {x} :", end = "\t")
 
@@ -399,11 +423,11 @@ def main(file_name, token = None):
     print("\n  -- PARSING --")
     grammar.build_parse_table()
 
+    print("Parse table:  (lambda denoted by '#'; rules are indexed as shown in GRAMMAR section)")
+    print(grammar.parse_table)
+
     # DEBUG EXIT
     exit()
-
-    LL1Table = LLTable(grammar)
-    print(LL1Table.table)
 
     ts = open(token, 'rb')
     tree = grammar.build_parse_tree(grammar.rules,ts, LL1Table)
