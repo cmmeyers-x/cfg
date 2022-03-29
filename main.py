@@ -8,12 +8,34 @@ class TreeNode:
         self.parent = parent
         self.children = []
 
-    def add_as_rightmost_child(self, data):
+    # Adds child in the rightmost location
+    def add_child(self, data):
         new_node = TreeNode(data, self)
         self.children.append(new_node)
 
-    def get_rightmost_child(self):
+    # Retrieves the child in the rightmost location
+    def get_child(self):
         return self.children[-1]
+
+    # Depth is str to represent parent association
+    def output(self, depth):
+        # Recursive base case - node is a leaf if no children
+        if len(self.children) == 0: return ""
+
+        ret = "\n"
+        # Print the value of each child node
+        for x, child in enumerate(self.children):
+            ret += f"{depth}:{x} -> {child.data}\n"
+
+        # Recursively call each child
+        for x, child in enumerate(self.children):
+            ret += child.output(depth + f":{x}")
+
+        return ret
+
+    # Not the prettiest output but good enough for testing
+    def __str__(self):
+        return f"ROOT: {self.data}\n" + self.output("RT")
 
 # A class representing a Context Free Grammar
 # Assume all fields in Constructor are present. You should just have to interface with this
@@ -170,7 +192,33 @@ class CFG:
     def build_parse_table(self):
         self.parse_table = ParseTable(self)
 
-    def build_parse_tree(self, P, ts, LLT):
+    # Creates a list of TOKENTYPE / TOKENTYPE srcValue tuples from the stream input file
+    def parse_stream(self, token_stream):
+        tokens = []
+        with open(token_stream, 'r') as inf:
+            for line in inf:
+                token = line.strip().split(" ")
+                hasValue = True if len(token) > 1 else False
+                tokens.append((token[0], None if not hasValue else token[1]))
+
+        return tokens
+
+    # I've opted to program this myself instead of using the pseudocode
+    # The previous implimentation was refactored to support the modified call
+    #   params and was renamed build_parse_tree_old() but is otherwise left intact
+    def build_parse_tree(self, token_stream):
+        tokens = self.parse_stream(token_stream)        # This is the queue of tokens
+        symbols = [self.startGoal]                      # This is the stack of tokens
+        tree = TreeNode("ROOT", None)
+
+        # Continue parsing nodes until the queue is empty
+        while len(tokens) > 0:
+            token = tokens.pop(0)[0]                    # Token value not currently necessary
+
+        return tree
+
+    def build_parse_tree_old(self, token_stream):
+        stream = open(token_stream, 'rb')
         T = TreeNode('Root', None)
         K = []
         Current = T
@@ -181,7 +229,7 @@ class CFG:
             #tok = ts.read(1)
             #ts.seek(current_file_loc)
             if x in self.cfg.keys():
-                p = P[LLT.get_production(x, ts.peek().decode('utf-8'))]
+                p = self.rules[self.parse_table.get_production(x, stream.peek().decode('utf-8'))]
                 if p == -1:
                     print("Syntax Error! #1")
                     exit(1)
@@ -194,13 +242,13 @@ class CFG:
                 Current = Current[1][-1]
             elif x in self.terminals or x == 'lambda':
                 if x in self.terminals:
-                    if not x == ts.peek().decode('utf-8'):
+                    if not x == stream.peek().decode('utf-8'):
                         print("Syntax Error! #2")
                         exit(1)
                     #x = tok
                     #current_file_loc += 1
                     #ts.seek(current_file_loc)
-                    x = ts.pop()
+                    x = stream.pop()
                 Current.add_as_rightmost_child(x)
             elif x == 'MARKER':
                 Current = Current.parent
@@ -326,7 +374,7 @@ def generate_cfg(lines: list) -> dict:
     return cfg
 
 
-def main(file_name, token = None):
+def main(file_name, token_stream = None):
     lines = parse_file(file_name)
     cfg = generate_cfg(lines)
 
@@ -371,6 +419,7 @@ def main(file_name, token = None):
         print(term, end = " ")
     print("\n")
 
+
     ##########################################
     print("\n  -- PREDICTION --")
     grammar = CFG(cfg, rules, terminals, start_symbol)
@@ -394,10 +443,6 @@ def main(file_name, token = None):
 
         print(first_set)
 
-        # for terminal in first_set:
-        #     print(terminal, end = " ")
-        # print()
-
     # Output follow sets of all non-terminals
     print("\nFollow sets:")
     for key in grammar.cfg.keys():
@@ -419,25 +464,44 @@ def main(file_name, token = None):
 
         print(predict_set[1])
 
+
     ##########################################
-    print("\n  -- PARSING --")
+    print("\n\n  -- PARSING --")
+    if token_stream is None:
+        print("No token stream provided.")
+        exit()
+
     grammar.build_parse_table()
 
     print("Parse table:  (lambda denoted by '#'; rules are indexed as shown in GRAMMAR section)")
     print(grammar.parse_table)
 
-    # DEBUG EXIT
-    exit()
-
-    ts = open(token, 'rb')
-    tree = grammar.build_parse_tree(grammar.rules,ts, LL1Table)
-    print(tree)
+    parse_tree = grammar.build_parse_tree(token_stream)
+    print(parse_tree)
 
 
 if __name__ == '__main__':
-    # if (len(sys.argv) != 3):
-    #     print("please pass file")
-    #     exit(1)
-    # main(sys.argv[1], sys.argv[2])
+    tree = TreeNode("ooga", None)
+    tree.add_child("booga")
+    child = tree.get_child()
+    child.add_child("mr krabs")
+    child.add_child("has nice hair")
 
-    main(sys.argv[1])
+    tree.add_child("my")
+    tree.add_child("tortuga")
+    child = tree.get_child()
+    child.add_child("SPICY")
+
+    print(tree)
+    exit()
+
+    argc = len(sys.argv)
+    if (argc < 2):
+        print(f"Usage: {sys.argv[0]} <grammar config> [token stream]")
+        exit(1)
+
+    elif argc == 2:
+        main(sys.argv[1])
+
+    else:
+        main(sys.argv[1], sys.argv[2])
