@@ -213,7 +213,7 @@ class CFG:
         return tokens
 
     #
-    def flatten_recursive(self, tree):
+    def flatten_recursive(self, tree: TreeNode) -> TreeNode:
 #        print("CHILD PRESENT: ", tree)
         child = tree.get_child()
 #        print("CHILD: ", child)
@@ -226,6 +226,16 @@ class CFG:
             tree.add_child(grand_child)
         print("--------")
         
+        return tree
+
+    def rotate_symbol(self, tree: TreeNode) -> TreeNode:
+        if len(tree.children) >= 2:
+            # consolidate terms and non terms
+            non_terms = [elm for elm in tree.children if elm.data in self.cfg]
+            terms = [elm for elm in tree.children if elm.data in self.terminals]
+            terms.reverse()  # flip ordering
+            non_terms.extend(terms)
+            tree.children = non_terms
         return tree
 
     # I've opted to program this myself instead of using the pseudocode
@@ -258,6 +268,7 @@ class CFG:
                 curNode = curNode.parent
                 if curNode.get_child().data == curNode.data:
                     curNode = self.flatten_recursive(curNode)
+                curNode = self.rotate_symbol(curNode)
                 continue
 
             # Check if the stack is a terminal and continue
