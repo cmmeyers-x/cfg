@@ -68,7 +68,7 @@ class CFG:
             if production == 'lambda':
                 return True
             terminal_in_production = False
-            for term in production:
+            for term in production.split(' '):
                 if term in self.terminals:
                     terminal_in_production = True
                     break
@@ -78,7 +78,7 @@ class CFG:
             all_derive_lambda = True
             # for each X_i (a non-terminal) in the production recurse
             # We know it's a non-terminal if it's in the cfg dictionary
-            for X_i in production:
+            for X_i in production.split(' '):
                 if X_i not in self.cfg:
                     continue
                 T.append(X_i)  # pushing non-terminal on T for recursive search
@@ -105,7 +105,7 @@ class CFG:
 
         # X is a terminal symbol
         if X in self.terminals:
-            return set(X), T
+            return {X}, T
 
         F = set()
         if X not in T:
@@ -128,7 +128,7 @@ class CFG:
     def find_rhs_occurrences(self, non_terminal: str) -> list:
         occurrences = []
         for (lhs, rhs) in self.rules:
-            if non_terminal in rhs:
+            if non_terminal in rhs.split(' '):
                 occurrences.append((lhs, rhs))
         return occurrences
 
@@ -159,8 +159,8 @@ class CFG:
             non_t_in_rhs = rhs.find(A, 0)
             pi = []
             while non_t_in_rhs != -1:
-                pi.append(rhs[non_t_in_rhs + 1:].strip())
-                non_t_in_rhs = rhs.find(A, non_t_in_rhs + 1)
+                pi.append(rhs[non_t_in_rhs + len(A):].strip())
+                non_t_in_rhs = rhs.find(A, non_t_in_rhs + len(A))
 
             for p in pi:
                 if len(p) > 0:
