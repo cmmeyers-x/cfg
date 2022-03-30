@@ -11,14 +11,21 @@ class TreeNode:
     # Adds child in the rightmost location
     # Returns the new child
     def add_child(self, data):
-        new_node = TreeNode(data, self)
-        self.children.append(new_node)
-        return new_node
+        if type(data) == TreeNode:
+            self.children.append(data)
+            return data
+        else:
+            new_node = TreeNode(data, self)
+            self.children.append(new_node)
+            return new_node
 
     # Retrieves the child in the rightmost location
     def get_child(self):
         return self.children[-1]
 
+    def remove_child(self, child):
+        self.children.remove(child)
+    
     # Depth is str to represent parent association
     def output(self, depth):
         # Recursive base case - node is a leaf if no children
@@ -205,6 +212,22 @@ class CFG:
 
         return tokens
 
+    #
+    def flatten_recursive(self, tree):
+#        print("CHILD PRESENT: ", tree)
+        child = tree.get_child()
+#        print("CHILD: ", child)
+        children = child.children
+#        print("CHILDREN: ", children)
+        tree.remove_child(child)
+#        print("CHILD REMOVED: ", tree)
+        for grand_child in children:
+            print(grand_child)
+            tree.add_child(grand_child)
+        print("--------")
+        
+        return tree
+
     # I've opted to program this myself instead of using the pseudocode
     # The previous implimentation was refactored to support the modified call
     #   params and was renamed build_parse_tree_old() but is otherwise left intact
@@ -217,18 +240,24 @@ class CFG:
 
         # Continue parsing nodes until the queue is empty
         while len(symbols) > 0:
+#            print(tree)
+#            print("----")
             symbol = symbols.pop()
             token = None
             try: token = tokens[0][0]                   # Token value not currently necessary
             except IndexError: pass
 
             # Debug output
-            # print("STACK: ", symbol)
-            # print("QUEUE: ", token)
+#            print("STACK: ", symbols)
+#            print("FROM STACK: ", symbol)
+#            print("QUEUE: ", tokens)
+#            print("FROM QUEUE: ", token)
 
             # Check for end of production marker
             if symbol == '*':
                 curNode = curNode.parent
+                if curNode.get_child().data == curNode.data:
+                    curNode = self.flatten_recursive(curNode)
                 continue
 
             # Check if the stack is a terminal and continue
@@ -263,9 +292,14 @@ class CFG:
             symbols.append('*')                         # End of production marker
             for r in reversed(RHS.split()):
                 symbols.append(r)
+#            print(symbols)
+#            print("-------")
 
             # Update the tree
             curNode = curNode.add_child(LHS)
+
+            #print(tree)
+            #print("--------")
 
         if curNode != tree: print("SYNTAX ERROR!")
         return tree
